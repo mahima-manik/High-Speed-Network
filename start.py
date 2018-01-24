@@ -1,3 +1,4 @@
+
 import numpy as np
 import random
 import math
@@ -60,3 +61,4 @@ for i in range(1, n+1):
         all_nodes.append(Node(1000+i, 50, 1, n, k))
     else:
         all_nodes.append(Node(1000+i, 50, 0, n, k))
+
