@@ -3,9 +3,22 @@ import numpy as np
 import random, thread, threading
 import math
 import matplotlib.pyplot as plt
-
 trans_id = 0
-#*IDS are generated as 1001, 1002... 1050*)
+
+class BlockChain:
+    def __init__(self, genesis):
+        self.genesis = genesis
+
+#Class for the block Data structure
+class Block:                        #corresponding to node
+    def __init__(self, id, listoftrans, prevblock):
+        self.prev_block = prevblock
+        self.blockid = id
+        self.gen_time = time.time()     #time when the block was generated
+        self.block_trans = listoftrans  #list of all transactions contained in the block
+        self.num_trans = len(listoftrans)
+
+#IDS are generated as 1001, 1002... 1050
 class Node:
     def __init__(self, id, btc, nature, total_nodes, num_peers):
         self.ledger = []        #Data structure to be decided
@@ -14,11 +27,12 @@ class Node:
         self.nature = nature    #nature = 1 then it is fast, else it is slow
         self.peers = [] 
         self.num_peers = num_peers
-        self. total_nodes = total_nodes   
+        self. total_nodes = total_nodes
         print "Hey, I am ", id
         print "Num peers ", num_peers  
-        
-        
+        global genesis
+        self.my_chain = BlockChain(genesis)
+
         p1 = threading.Thread(target=self.get_my_peers)
         p1.setDaemon = True
         p1.start()
@@ -26,7 +40,6 @@ class Node:
        	p2.setDaemon = True
        	p2.start()
         
-
     def get_my_peers(self):
         time.sleep(5)
         global all_nodes
@@ -118,6 +131,9 @@ class Node:
 n = 5
 z = 50
 x = z*n/100
+
+genesis = Block(5000, [], None)
+
 list_fast = []
 list_fast = random.sample(range(1000, 1000+int(n)), x)
 all_nodes = []
