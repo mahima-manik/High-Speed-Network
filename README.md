@@ -6,3 +6,4 @@ Remaining tasks:
 1. logic for pruning has to be checked.
 2. reasons for the various distributions.
 3. saving chains in file.
+4. mining rewards
