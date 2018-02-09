@@ -124,7 +124,7 @@ class Node:
         while True:
             end_time = time.time()
             if end_time - start_time < 40 :     #simultion time
-                x = np.random.uniform(1, 3)    #average time to generate transaction = 5
+                x = np.random.uniform(5, 8)    #average time to generate transaction = 5
                 time.sleep(x)
                 recv = random.randint(0, self.num_peers-1)
                 amount = 2
@@ -157,7 +157,7 @@ class Node:
         while self.stop_simulation == 0 or len(self.find_unspend()) > 0: 
             Tk = np.random.exponential(1)
             if first_itr == 1:
-                w = np.random.uniform(1, 5)
+                w = np.random.uniform(0, 1)
                 print "First itr wait: ", w
                 time.sleep(w)
                 first_itr = 0
@@ -187,17 +187,14 @@ class Node:
                     final_last = self.my_chain.find_longest_chain()     #new block is added to the longest chain known till yet            
                     unspend = self.find_unspend()
                     if len(unspend)>0:
+                        print "Creating block", self.nodeid, len(unspend)
                         temp = Block(id, unspend, final_last, self.nodeid)
                         self.send_broadcast_block(temp)
                         print "below"
                         if (self.block_rcvd != 1):
                             tkr = time.time()
                         print self.nodeid , "my last list len" , len(self.my_chain.last)
-                    #print "before broad", self.nodeid
-                    #pp = threading.Thread(target=self.send_broadcast_block, args=(temp, ))
-                    #pp.start()
                     
-                    #print "reach in", self.nodeid
                 '''elif ((len(self.find_unspend()) > 0)):
                     #print "Block not Generated\n"
                     self.block_rcvd = 0'''
