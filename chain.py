@@ -50,14 +50,13 @@ class BlockChain:
             if len>max_len:
                 max_len = len
                 max_last = j
-            if len==max_len and max_last!=None:
-                if (j.gen_time > max_last.gen_time):
+            if len==max_len and max_last!=None:         #the block generated earlier is the last block returned
+                if (j.gen_time < max_last.gen_time):
                     max_len = len
                     max_last = j
         #print "LAST Item" , j.blockid
         #return j    #mahima check this once
-        
-        return j
+        return max_last
 
 #Class for the block Data structure
 class Block:                        #corresponding to node

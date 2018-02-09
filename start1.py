@@ -22,7 +22,7 @@ class Node:
         self. total_nodes = total_nodes
         self.tk = 0
         self.block_rcvd = 0
-        print "Hey, I am ", id
+        print "Hey, I am ", id,
         print "Num peers ", num_peers  
         global genesis
         self.my_chain = BlockChain(genesis)
@@ -69,14 +69,14 @@ class Node:
                 recv = n
                 break
         self.ledger.append([int(acc[0][:len(acc[0])-1]), int(acc[1]), int(acc[3]), float(acc[4])])         #TXID, sender, receiver, amount
-        self.unspent_translist.append([int(acc[0][:len(acc[0])-1]), int(acc[1]), int(acc[3]), float(acc[4])])
+        #self.unspent_translist.append([int(acc[0][:len(acc[0])-1]), int(acc[1]), int(acc[3]), float(acc[4])])
         recv.recv_ack(msg)
 
     #when the sender receives back the acknowlegement from the receiver
     def recv_ack(self, msg):
         acc = msg.split()
         self.ledger.append([int(acc[0][:len(acc[0])-1]), int(acc[1]), int(acc[3]), float(acc[4])])
-        self.unspent_translist.append([int(acc[0][:len(acc[0])-1]), int(acc[1]), int(acc[3]), float(acc[4])])
+        #self.unspent_translist.append([int(acc[0][:len(acc[0])-1]), int(acc[1]), int(acc[3]), float(acc[4])])
         for p in self.peers:
             p.transaction_broadcast(self.nodeid, msg)
 
@@ -92,7 +92,7 @@ class Node:
         
         if found != 1:    
             self.ledger.append([txid, int(acc[1]), int(acc[3]), float(acc[4])])
-            self.unspent_translist.append([int(acc[0][:len(acc[0])-1]), int(acc[1]), int(acc[3]), float(acc[4])])
+            #self.unspent_translist.append([int(acc[0][:len(acc[0])-1]), int(acc[1]), int(acc[3]), float(acc[4])])
             #print txid, self.nodeid, len(self.unspent_translist)
             for j in self.peers:
                 if j.nodeid != senderid:
@@ -123,14 +123,14 @@ class Node:
         global start_time
         while True:
             end_time = time.time()
-            if end_time - start_time < 30 :     #simultion time
-                x = np.random.exponential(5)    #average time to generate transaction = 5
+            if end_time - start_time < 40 :     #simultion time
+                x = np.random.uniform(1, 3)    #average time to generate transaction = 5
                 time.sleep(x)
                 recv = random.randint(0, self.num_peers-1)
                 amount = 2
                 self.send_transaction(amount, self.peers[recv])
             else :
-                self.stop_simulation = 1
+                self.stop_simulation = 1            #then stop
                 break
 
     #removing all the transactions in the new block from unspent transaction list
@@ -139,48 +139,93 @@ class Node:
             if i in self.unspent_translist:
                 self.unspent_translist.remove(i)
 
+    def find_unspend(self):
+        temp = self.ledger
+        my_last = self.my_chain.find_longest_chain()
+        while my_last != None:
+            for tr in my_last.block_trans:
+                if tr in self.ledger:
+                    temp.remove(tr)
+            my_last = my_last.prev_block
+
+        return temp
+
     def create_block(self):
-        global start_time
-        print "START TIME>>>>>>>>>>>>>>>>", start_time
+        time.sleep(12)
         tkr = time.time()
-        
-        while self.stop_simulation != 1 or len(self.unspent_translist) != 0: 
-            Tk = np.random.uniform(1,3)
-            #print self.nodeid, "Waiting for", Tk
-            #time.sleep(Tk)
-            print self.nodeid, "Waiting for", tkr+Tk-time.time()
+        first_itr = 1
+        while self.stop_simulation == 0 or len(self.find_unspend()) > 0: 
+            Tk = np.random.exponential(1)
+            if first_itr == 1:
+                w = np.random.uniform(1, 5)
+                print "First itr wait: ", w
+                time.sleep(w)
+                first_itr = 0
+            '''print self.nodeid, "Waiting for", Tk, self.block_rcvd, tkr+Tk-time.time()
             while(time.time() < tkr +Tk):
                 if self.block_rcvd == 1:
                     tkr = self.tk
                     break
-            
-            print "CREATING BLOCK..........", self.nodeid, self.block_rcvd, len(self.unspent_translist), self.stop_simulation
-            if (self.block_rcvd == 0) and (len(self.unspent_translist) > 0):
-                id =  random.randint(10000, 90000)      #Random block ID generated
-                final_last = self.my_chain.find_longest_chain()     #new block is added to the longest chain known till yet            
-                temp = Block(id, self.unspent_translist, final_last, self.nodeid)
-                print "before broad", self.nodeid
-                pp = threading.Thread(target=self.send_broadcast_block, args=(temp, ))
-                pp.start()
-                #self.send_broadcast_block(temp)
-                print "reach in", self.nodeid
-            elif ((len(self.unspent_translist) > 0)):
-                print "Block not Generated\n"
+            '''
+            flag = 0
+            tkr = self.tk
+            if self.block_rcvd == 1:
+                #print  "Waiting for", self.nodeid, Tk + self.tk - time.time(), self.tk-tkr
                 self.block_rcvd = 0
-        print "Final unspent list:" , self.nodeid , self.unspent_translist
+                while time.time() < Tk + self.tk:
+                    if self.block_rcvd==1:
+                        flag = 1
+                        break
+            if flag == 0:
+                self.block_rcvd = 0
+                
+            t = len(self.find_unspend())
+            #print "KITNE UPSTENT HAI",self.nodeid,len(self.find_unspend()),self.block_rcvd
+            if (len(self.find_unspend()) > 0):
+                if (self.block_rcvd == 0):
+                    id =  random.randint(10000, 90000)      #Random block ID generated
+                    final_last = self.my_chain.find_longest_chain()     #new block is added to the longest chain known till yet            
+                    unspend = self.find_unspend()
+                    if len(unspend)>0:
+                        temp = Block(id, unspend, final_last, self.nodeid)
+                        self.send_broadcast_block(temp)
+                        print "below"
+                        if (self.block_rcvd != 1):
+                            tkr = time.time()
+                        print self.nodeid , "my last list len" , len(self.my_chain.last)
+                    #print "before broad", self.nodeid
+                    #pp = threading.Thread(target=self.send_broadcast_block, args=(temp, ))
+                    #pp.start()
+                    
+                    #print "reach in", self.nodeid
+                '''elif ((len(self.find_unspend()) > 0)):
+                    #print "Block not Generated\n"
+                    self.block_rcvd = 0'''
+        print "Final unspent list:" , self.nodeid , self.find_unspend()
         global is_over
         is_over +=1
 
     def send_broadcast_block(self, target_block):
-        if target_block.miningfee_list[0] == self.nodeid:
-            self.block_rcvd = 0
+        '''if target_block.miningfee_list[0] == self.nodeid:
+            self.block_rcvd = 0'''
+        ffast = 0
+        fslow = 0
         for i in self.peers:
             #px = threading.Thread(target=i.recv_broadcast_block, args=(target_block, self.nodeid, ))
             #px.start()
+
+            if self.nature == 1 and i.nature == 1:
+                if ffast == 0:
+                    ffast = 1
+                    time.sleep(latencies[self.nodeid-1001][i.nodeid-1001]+0.08)  #added m/cij value in latencies
+            else:
+                if fslow == 0:
+                    fslow = 1
+                    time.sleep(latencies[self.nodeid-1001][i.nodeid-1001]+1.6)
             i.recv_broadcast_block(target_block, self.nodeid)
 
     def recv_broadcast_block(self, target_block, sender_nodeid):
-        self.tk = time.time()
+        
         found = 0
         l =  self.my_chain.last
         for i in l:
@@ -196,27 +241,25 @@ class Node:
         if found != 1:           #if the block at the end of longest chain is the same as prev. block of the new block
             final_last = self.my_chain.find_longest_chain()
         
-            if target_block.miningfee_list[0] == self.nodeid:
-                self.my_chain.add_block(target_block.prev_block, target_block)
-                self.update_unspent_trans(target_block)
-                self.btc += 50
-                self.block_rcvd = 0
-
-            else:
+            if target_block.miningfee_list[0] == self.nodeid:       #if i had only generated this block
                 self.my_chain.add_block(final_last, target_block)
-                self.update_unspent_trans(target_block)
-                self.block_rcvd = 1
-                self.tk = time.time()
+                self.btc += 50
                 
-            if target_block.prev_block.blockid == final_last.blockid:
-                print "received new broadcast", target_block.miningfee_list[0]
-
-                for n in self.peers:
-                    if n.nodeid != sender_nodeid:
-                        #pp = threading.Thread(target=n.send_broadcast_block, args=(target_block, ))
-                        #pp.start()
-                        n.send_broadcast_block(target_block)
-
+            else:
+                self.my_chain.add_block(target_block.prev_block, target_block)
+                self.block_rcvd = 1
+            
+            #if target_block.prev_block.blockid == final_last.blockid:       #if added on longest, then broadcast
+                #print "received new broadcast", target_block.miningfee_list[0]
+            for n in self.peers:
+                if n.nodeid != sender_nodeid and n.nodeid != self.nodeid:
+                    #pp = threading.Thread(target=n.send_broadcast_block, args=(target_block, ))
+                    #pp.start()
+                    n.send_broadcast_block(target_block)
+            if target_block.miningfee_list[0] != self.nodeid:
+                self.block_rcvd = 1
+            self.tk = time.time()
+            
             #print "Receive complete", self.nodeid
 
     def prune_chain(self,final_last):
@@ -229,7 +272,7 @@ class Node:
 
 #n = int(raw_input ("No. of nodes: "))
 #z = int(raw_input ("Enter z (percent of past nodes): "))
-n = 50
+n = 20
 z = 20
 x = z*n/100
 genesis = Block(5000, [], None, 0)
