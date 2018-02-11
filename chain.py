@@ -6,6 +6,7 @@ class BlockChain:
         self.genesis = genesis
         self.last = []
         self.last.append(genesis)
+        self.flist = []
     
     def add_block(self, prevblock, thisblock):
         thisblock.prev_block = prevblock
@@ -23,6 +24,7 @@ class BlockChain:
                 self.last.remove(prevblock)
             self.last.append(thisblock)
             temp = str(prevblock.blockid)+ " "+str(thisblock.blockid)
+            self.flist.append(temp)
             
     def print_blockchain(self, endblock):
         l = 0
@@ -65,7 +67,6 @@ class Block:                        #corresponding to node
         self.block_trans = listoftrans  #list of all transactions contained in the block
         self.num_trans = len(listoftrans)
         self.miningfee_list = [nodeid, self.blockid, 50]
-        self.visit_flag = 0 #used in pruning the chain
 
 
 '''genesis = Block(5000, [], None, 1001)
