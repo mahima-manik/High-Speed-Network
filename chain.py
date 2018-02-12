@@ -25,17 +25,16 @@ class BlockChain:
             self.last.append(thisblock)
             temp = str(prevblock.blockid)+ " "+str(thisblock.blockid)
             self.flist.append(temp)
-            
+
     def print_blockchain(self, endblock):
         l = 0
         i = copy.deepcopy(endblock)
-        print endblock.blockid
+        #print endblock.blockid
         while i != None:
-            print i.blockid, i.num_trans, i.miningfee_list[0]
+            #print i.blockid, i.num_trans, i.miningfee_list[0]
             l = l+1
             i = i.prev_block
-        print "\n"
-        print "LENGTH OF LON CHAIN",l
+        return l
     
     def find_longest_chain(self):
         max_len = 0
@@ -66,7 +65,7 @@ class Block:                        #corresponding to node
         self.gen_time = time.time()     #time when the block was generated
         self.block_trans = listoftrans  #list of all transactions contained in the block
         self.num_trans = len(listoftrans)
-        self.miningfee_list = [nodeid, self.blockid, 50]
+        self.block_nodeid = nodeid
 
 
 '''genesis = Block(5000, [], None, 1001)

@@ -4,6 +4,7 @@ import numpy as np
 import random, thread, threading
 from chain import *
 import copy
+from tabulate import tabulate
 
 trans_id = 0    #Transaction IDs are generated sequentially
 
@@ -20,29 +21,49 @@ class Node:
         self.peers = []
         self.num_peers = num_peers
         self. total_nodes = total_nodes
-        self.tk = 0
-        self.block_rcvd = 0
+        self.tk = 0             #tk time is set when some block is received
+        self.block_rcvd = 0     #reflects if the block is received or not
         print "Hey, I am ", id,
         print "Num peers ", num_peers  
         global genesis
         self.my_chain = BlockChain(genesis)
-        self.stop_simulation = 0
-        
-        #For parallel procesing
+        self.stop_simulation = 0    #simulation is stopped when it is set to 1
+        self.check_point = genesis
+
+        #For parallel processing
         p1 = threading.Thread(target=self.get_my_peers)
         p1.setDaemon = True
         p1.start()
         
-        p2=threading.Thread(target=self.create_transaction) 			#thread for tcp server
+        p2 = threading.Thread(target=self.create_transaction)
        	p2.setDaemon = True
        	p2.start()
         
-        p3=threading.Thread(target=self.create_block)
+        p3 = threading.Thread(target=self.create_block)
         p3.setDaemon = True
         p3.start()
 
-    def get_my_peers(self):
+        p4 = threading.Thread(target=self.get_reward)
+        p4.setDaemon = True
+       	p4.start()
         
+    def get_reward(self):
+        count = 0
+        tc = self.check_point
+        last_block = self.my_chain.find_longest_chain()
+        temp_block = copy.copy(last_block)
+        while temp_block.blockid != self.check_point.blockid:
+            count += 1
+            if count > 2:
+                if count == 3:          
+                    '''temporary block check point'''
+                    tc = temp_block
+                if temp_block.block_nodeid == self.nodeid:
+                    self.btc += 50
+            temp_block = temp_block.prev_block
+        self.check_point = tc
+
+    def get_my_peers(self):
         time.sleep(5)
         global all_nodes
         
@@ -54,26 +75,29 @@ class Node:
             
             a=a-1001
             self.peers.append(all_nodes[a])
-            #Adding self to the peers list
+            '''Adding self to the peers list'''
             if self not in self.peers:
                 self.peers.append(self)
             
+    '''Checks if the given ID is present in the peers list of the node'''
     def check_peer(self, id):
         for i in self.peers:
             if (i.nodeid == id):
                 return True
         return False
 
-    #Receiver of the bitcoins sends back the acknowlegement to the sender
+    ''''Receiver of the bitcoins sends back the acknowlegement to the sender'''
     def send_ack (self, msg):
         global all_nodes
         acc = msg.split()
-        #finding the object of the sender node
+        '''finding the object of the sender node'''
         for n in all_nodes:
             if(n.nodeid==int(acc[1])):
                 recv = n
                 break
-        self.ledger.append([int(acc[0][:len(acc[0])-1]), int(acc[1]), int(acc[3]), float(acc[4])])         #TXID, sender, receiver, amount
+        txid = int(acc[0][:len(acc[0])-1])
+        sender = int(acc[1])
+        self.ledger.append([txid, sender, int(acc[3]), float(acc[4])])         #TXID, sender, receiver, amount
         recv.recv_ack(msg)
 
     #when the sender receives back the acknowlegement from the receiver
@@ -124,8 +148,9 @@ class Node:
         while True:
             
             end_time = time.time()
-            if end_time - start_time < 70 :     #simultion time
-                x = np.random.exponential(7)    #average time to generate transaction 
+
+            if end_time - start_time < 30 :     #simultion time
+                x = np.random.exponential(3)    #average time to generate transaction 
                 time.sleep(x)
                 recv = random.randint(0, self.num_peers-1)
                 
@@ -142,23 +167,25 @@ class Node:
     def find_unspend(self):
         temp = copy.copy(self.ledger)
         my_last = self.my_chain.find_longest_chain()
+        
         while my_last != None:
             for tr in my_last.block_trans:
                 if tr in temp:
                     temp.remove(tr)
             my_last = my_last.prev_block
+        
         return temp
 
     def create_block(self):
         first_itr = 1
         self.tk = time.time()
         while self.stop_simulation == 0 or len(self.find_unspend()) > 0: 
-            Tk = np.random.exponential(7)
+            Tk = np.random.exponential(1)
             
-            '''if first_itr == 1:
+            if first_itr == 1:
                 w = np.random.uniform(1, 3)
                 time.sleep(w)
-                first_itr = 0'''
+                first_itr = 0
             
             if self.block_rcvd == 1:
                 print  "Waiting for", self.nodeid, Tk + self.tk - time.time()
@@ -172,19 +199,16 @@ class Node:
                     id =  random.randint(10000, 90000)      #Random block ID generated
                     final_last = self.my_chain.find_longest_chain()     #new block is added to the longest chain known till yet            
                     unspend = self.find_unspend()
-                    print "Creating block", self.nodeid, len(unspend)
+                    #print "Creating block", self.nodeid, len(unspend)
                     temp = Block(id, unspend, final_last, self.nodeid)
                     t = time.time()
-                    #pp = threading.Thread(target=self.send_broadcast_block, args=(temp, )) 			#thread for tcp server
-       	            #pp.setDaemon = True
-                    #pp.start()
-                    
                     self.send_broadcast_block(temp)
-                    print self.nodeid , "Send complete after: ", time.time()-t
+                    #print self.nodeid , "Send complete after: ", time.time()-t
                     
         print "Final unspent list:" , self.nodeid , self.find_unspend()
-        global is_over
+        global is_over, all_nodes
         is_over +=1
+        
 
     def send_broadcast_block(self, target_block):
         '''if target_block.miningfee_list[0] == self.nodeid:
@@ -217,7 +241,7 @@ class Node:
     def recv_broadcast_block(self, target_block, sender_nodeid):
         found = 0
         llist =  self.my_chain.last
-        final_last = self.my_chain.find_longest_chain()
+        
         
         for i in llist:
             j = copy.deepcopy(i)
@@ -230,40 +254,52 @@ class Node:
                 break
 
         
-        if found != 1 :          #if the block at the end of longest chain is the same as prev. block of the new block
-            
+        if found == 0 :          #if the block at the end of longest chain is the same as prev. block of the new block
+            global all_nodes
             '''and self.search_trans(target_block.block_trans, final_last)'''
-            if target_block.miningfee_list[0] == self.nodeid:       #if i had only generated this block
+            if target_block.block_nodeid == self.nodeid:       #if i had only generated this block
+                
+                #final_last = self.my_chain.find_longest_chain()
                 self.my_chain.add_block(target_block.prev_block, target_block)
-                if target_block.prev_block.blockid == final_last.blockid:
-                    self.btc += 50
+                print "Same :", self.nodeid, target_block.blockid, target_block.prev_block.blockid
+                #if target_block.prev_block.blockid == final_last.blockid:
+                    #self.my_chain.add_block(target_block.prev_block, target_block)
+                    #all_nodes[target_block.block_nodeid-1001].btc += 50
+                    #print "Getting Reward", self.nodeid, target_block.blockid, final_last.prev_block.blockid, final_last.blockid
+
                 
             else:
                 self.my_chain.add_block(target_block.prev_block, target_block)
                 self.block_rcvd = 1
             
-            #if (target_block.prev_block.blockid == final_last.blockid):
             for n in self.peers:
                 if n.nodeid != sender_nodeid and n.nodeid != self.nodeid:
                     n.send_broadcast_block(target_block)
-            if target_block.miningfee_list[0] != self.nodeid:
+            if target_block.block_nodeid != self.nodeid:
                 self.block_rcvd = 1
-            
-            
-            #print "Receive complete", self.nodeid
 
-    def prune_chain(self,final_last):
-        add_unspent = []
-        for i in my_chain.last:
-            if (i != final_last):
-                add_unspent + i.block_trans
-                my_chain.last.remove(i)
-
+def verify_btc():
+    global all_nodes
+    check_list = [50 for i in range(len(all_nodes))]
+    last_block = all_nodes[0].my_chain.find_longest_chain()
+    temp_block = copy.copy(last_block)
+    while temp_block.prev_block != None:
+        rewardee = temp_block.block_nodeid-1001
+        print "Winner", temp_block.blockid, temp_block.block_nodeid, rewardee, len(temp_block.block_trans)
+        check_list[rewardee] += 50
+        for tr in temp_block.block_trans:
+            sender =  tr[1]-1001
+            recv = tr[2]-1001
+            amt = tr[3]
+            check_list[sender] -= amt
+            check_list[recv] += amt
+        temp_block = temp_block.prev_block
+    return check_list
 
 #n = int(raw_input ("No. of nodes: "))
-#z = int(raw_input ("Enter z (percent of past nodes): "))
+#z = int(raw_input ("Enter z (percent of fast nodes): "))
 n = 10
-z = 20
+z = 80
 x = z*n/100
 
 genesis = Block(5000, [], None, 0)
@@ -285,16 +321,23 @@ sj=0
 while si < n:
     while sj < n:
         if (all_nodes[si].nature == all_nodes[sj].nature == 1):
-            latencies[si][sj] = latencies[sj][si] = random.uniform(0.01, 0.5) + np.random.exponential(0.00096)
+            latencies[si][sj] = random.uniform(0.01, 0.5) + np.random.exponential(0.00096)
         else:
-            latencies[si][sj] = latencies[sj][si] = random.uniform(0.01, 0.5) + np.random.exponential(0.0192)
+            latencies[si][sj] = random.uniform(0.01, 0.5) + np.random.exponential(0.0192)
         sj = sj+1
+    sj = 0
     si = si + 1
 
-
-print "is_over::", is_over
 while (is_over != n):
-    pass
+    pass    
+
+for i in all_nodes:
+    cp = i.check_point
+    last_block = copy.copy(i.my_chain.find_longest_chain())
+    while last_block.blockid != cp.blockid:
+        if (i.nodeid == last_block.block_nodeid):
+            i.btc += 50
+        last_block = last_block.prev_block
 
 for i in all_nodes:
     fname = "chain"+str(i.nodeid)
@@ -304,14 +347,16 @@ for i in all_nodes:
     fcreate.close()
 
 print "Total trans happened: ", len(all_nodes[0].ledger)
-for i in all_nodes:
+'''for i in all_nodes:
     temp = i.my_chain.find_longest_chain()
-    print i.nodeid, ": ", i.my_chain.print_blockchain(temp)
+    print i.nodeid, ": ", i.my_chain.print_blockchain(temp)'''
 
 #printing entire blockchain of the node
 for i in all_nodes:
     print "My blockchain", i.nodeid, ": ", [ j.blockid for j in i.my_chain.last], len(i.my_chain.last)
 
-
-
-print tabulate(all_nodes.nodeid, headers=['Transaction ID', 'Sender', 'Receiver', 'Amount'])
+check_list = verify_btc()
+nodeids = []
+for j in all_nodes:
+    nodeids.append([j.nodeid, j.nature, j.num_peers, j.btc, check_list[j.nodeid-1001] ,j.my_chain.print_blockchain(j.my_chain.find_longest_chain())])
+print tabulate(nodeids ,headers=['Node ID', 'Nature' ,'No. of peers', "BTC", "Cal BTC" ,"Chain length"])
