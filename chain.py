@@ -6,25 +6,39 @@ class BlockChain:
         self.genesis = genesis
         self.last = []
         self.last.append(genesis)
-        self.flist = []
-    
+        self.flist = []     
+        '''for file generation'''
+        self.buffer = []
+
     def add_block(self, prevblock, thisblock):
         thisblock.prev_block = prevblock
-        found = 0
+        found = 0           
+        '''checks if present in the whole blockchain'''
         for i in self.last:
             j = copy.deepcopy(i)
             while j != None:
                 if j.blockid == prevblock.blockid:
-                    found=1
+                    found = 1
                     break
                 j = j.prev_block
+            if found == 1:
+                break
 
         if found == 1:       
             if prevblock in self.last:
                 self.last.remove(prevblock)
             self.last.append(thisblock)
-            temp = str(prevblock.blockid)+ " "+str(thisblock.blockid)
+            temp = str(thisblock.blockid)+ "->"+str(prevblock.blockid)
             self.flist.append(temp)
+
+            for b in self.buffer:
+                if thisblock.blockid == b.prev_block.blockid:
+                    temp = copy.deepcopy(b)
+                    self.buffer.remove(b)
+                    self.add_block(thisblock, temp)
+
+        elif found == 0:
+            self.buffer.append(thisblock)
 
     def print_blockchain(self, endblock):
         l = 0
@@ -36,6 +50,16 @@ class BlockChain:
             i = i.prev_block
         return l
     
+    def print_longest(self):
+        i = copy.deepcopy(self.find_longest_chain())
+        l = 0
+        #print endblock.blockid
+        while i != None:
+            print i.blockid, i.num_trans,
+            l = l+1
+            i = i.prev_block
+
+   
     def find_longest_chain(self):
         max_len = 0
         max_last = None
@@ -75,11 +99,19 @@ my_chain.add_block(genesis, block1)
 block2 = Block(5002, ["khush"], block1, 1003)
 my_chain.add_block(block1, block2)
 
-block3 = Block(5003, ["khush"], block1, 1002)
-my_chain.add_block(block1, block3)
+block4 = Block(5004, ["khush"], block1, 1002)
+print "block4",my_chain.if_blockinchain(block4)
+block3 = Block(5003, ["khu"], block1, 1002)
+my_chain.add_block(block4, block3)
+print len(my_chain.buffer)
+print "block3",my_chain.if_blockinchain(block3)
+
+my_chain.add_block(block1, block4)
+print len(my_chain.buffer)
+print "block4",my_chain.if_blockinchain(block4)
 
 
 
-block4 = Block(5004, ["laddoo"], block3, 1003)
-my_chain.add_block(block3, block4)
+block5 = Block(5005, ["laddoo"], block3, 1003)
+my_chain.add_block(block3, block5)
 print my_chain.find_longest_chain().blockid'''
