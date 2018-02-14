@@ -6,9 +6,11 @@ from chain import *
 import copy
 from tabulate import tabulate
 
-trans_id = 0    #Transaction IDs are generated sequentially
+trans_id = 0    
+'''Transaction IDs are generated sequentially'''
 
-is_over = 0     #Becomes 1 when all the threads stop
+is_over = 0     
+'''Becomes 1 when all the threads stop'''
 
 #IDS are generated as 1001, 1002... 
 class Node:
@@ -23,8 +25,8 @@ class Node:
         self. total_nodes = total_nodes
         self.tk = 0             #tk time is set when some block is received
         self.block_rcvd = 0     #reflects if the block is received or not
-        print "Hey, I am ", id,
-        print "Num peers ", num_peers  
+        print "NodeID:", id, ",",
+        print "Peers:", num_peers 
         global genesis
         self.my_chain = BlockChain(genesis)
         self.stop_simulation = 0    #simulation is stopped when it is set to 1
@@ -33,7 +35,8 @@ class Node:
         self.Tk_mean = Tk_mean
         self.sim_time = sim_time
         self.trans_mean = trans_mean
-        #For parallel processing
+        
+        '''For parallel processing'''
         p1 = threading.Thread(target=self.get_my_peers)
         p1.setDaemon = True
         p1.start()
@@ -45,7 +48,7 @@ class Node:
         p3 = threading.Thread(target=self.create_block)
         p3.setDaemon = True
         p3.start()
-        # for updating btc of the node
+        '''for updating btc of the node'''
         p4 = threading.Thread(target=self.get_reward)
         p4.setDaemon = True
        	p4.start()
@@ -222,9 +225,10 @@ class Node:
                     self.send_broadcast_block(temp, self.nodeid)
                     print "Creating block", self.nodeid
                     
-        print "Final unspent list:" , self.nodeid , self.find_unspend()
+        print "Unspent list of" , self.nodeid , ":",self.find_unspend()
         global is_over, all_nodes
         is_over +=1
+    
     '''checks if block is already present in blockchain or buffer'''
     def if_blockinchain(self, target_block):
         llist =  copy.deepcopy(self.my_chain.last)
@@ -268,7 +272,6 @@ class Node:
         return True
 
     def recv_broadcast_block(self,target_block,from_nodeid):
-        #self.if_blockinchain(target_block)== 0 and 
         if self.find_block(target_block):
             ffast = 0
             fslow = 0
@@ -291,6 +294,7 @@ class Node:
                     
                     i.recv_broadcast_block(target_block, self.nodeid)
                     i.tk = time.time()
+
 '''print Btc updation of nodes according to longest chain'''
 def verify_btc():
     global all_nodes
@@ -299,7 +303,7 @@ def verify_btc():
     temp_block = copy.copy(last_block)
     while temp_block.prev_block != None:
         rewardee = temp_block.block_nodeid-1001
-        print "Winner", temp_block.blockid, temp_block.block_nodeid, rewardee, len(temp_block.block_trans)
+        #print "Winner", temp_block.blockid, temp_block.block_nodeid, rewardee, len(temp_block.block_trans)
         check_list[rewardee] += 50
         for tr in temp_block.block_trans:
             sender =  tr[1]-1001
@@ -314,6 +318,8 @@ def verify_btc():
 Command line arguments :- 
 n = number of nodes in the network
 z = percent of fast nodes in the network
+trans_mean = mean of generating transactions
+Tk_mean, sim_time
 '''
 
 n = int(sys.argv[1])
@@ -353,7 +359,7 @@ while si < n:
 while (is_over != n):
     pass    
 
-print "Total run", time.time() - my_time
+print "Total runtime", time.time() - my_time
 
 for i in all_nodes:
     cp = i.check_point
@@ -370,21 +376,21 @@ for i in all_nodes:
         fcreate.write(txt+"\n")
     fcreate.close()
 
-print "Total trans happened: ", len(all_nodes[0].ledger)
+print "Total transactions happened: ", len(all_nodes[0].ledger)
 '''for i in all_nodes:
     temp = i.my_chain.find_longest_chain()
     print i.nodeid, ": ", i.my_chain.print_blockchain(temp)'''
 
-#printing entire blockchain of the node
+'''printing entire blockchain of the node
 for i in all_nodes:
-    print "My blockchain", i.nodeid, ": ",i.my_chain.print_longest()
+    print "My blockchain", i.nodeid, ": ",i.my_chain.print_longest()'''
 
 check_list = verify_btc()
 nodeids = []
 for j in all_nodes:
     nodeids.append([j.nodeid, j.nature, j.num_peers, j.btc, check_list[j.nodeid-1001] ,j.my_chain.print_blockchain(j.my_chain.find_longest_chain())])
-print tabulate(nodeids ,headers=['Node ID', 'Nature' ,'No. of peers', "BTC", "Cal BTC" ,"Chain length"])
+print "\n", tabulate(nodeids ,headers=['Node ID', 'Nature' ,'No. of peers', "BTC", "Cal BTC" ,"Chain length"])
 
-print "Block lists"
+'''print "Block lists"
 for itr in all_nodes:
-    print itr.nodeid, len(itr.block_list), len(itr.my_chain.buffer)
+    print itr.nodeid, len(itr.block_list), len(itr.my_chain.buffer)'''
