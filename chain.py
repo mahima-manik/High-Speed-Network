@@ -33,12 +33,19 @@ class BlockChain:
 
             for b in self.buffer:
                 if thisblock.blockid == b.prev_block.blockid:
-                    temp = copy.deepcopy(b)
+                    temp = b
                     self.buffer.remove(b)
                     self.add_block(thisblock, temp)
 
         elif found == 0:
-            self.buffer.append(thisblock)
+            done = 0
+            for b in self.buffer:
+                if thisblock.prev_block.blockid == b.blockid:
+                    thisblock.prev_block = b
+                    done = 1
+                    break
+            if done == 0:
+                self.buffer.append(thisblock)
 
     def print_blockchain(self, endblock):
         l = 0
