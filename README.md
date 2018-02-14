@@ -1,9 +1,7 @@
-# High-Speed-Network
+#ASSIGNMENT -1 SIMULATION OF  P2P CRYPTOCURRENCY NETWORK
 
-uniform distribution chosen for connecting to random number fo peers. Reason for chosing distribution??
-
-Remaining tasks:
-1. logic for pruning has to be checked.
-2. reasons for the various distributions.
-3. saving chains in file.
-4. mining rewards
+Instructions to compile and run the code:
+1. Open terminal window and go to the folder where file is saved.
+2. On the terminal window, type the following command:
+      python start.py <"No of nodes in network"><"Percent of fast node"><"Mean of exponential distribution of transaction time">
+                       <"Mean of exponential distribution of block generation time"><"Simulation time">
