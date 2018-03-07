@@ -129,7 +129,7 @@ class Node:
                 found = 1
                 break
         
-        if found != 1:    
+        if found != 1:
             time.sleep(latencies[self.nodeid-1001][senderid-1001])
             self.ledger.append([txid, int(acc[1]), int(acc[3]), float(acc[4])])
             for j in self.peers:
@@ -174,7 +174,7 @@ class Node:
                 amount = np.random.uniform(0,2)
                 self.send_transaction(amount, self.peers[recv])
             
-            else :
+            else:
                 self.stop_simulation = 1            #then stop
                 break
 
