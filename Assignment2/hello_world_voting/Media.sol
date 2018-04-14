@@ -13,6 +13,15 @@ web3.fromWei(web3.eth.getBalance(web3.eth.accounts[1])).toString()
 web3.fromWei(web3.eth.getBalance(web3.eth.accounts[2])).toString()
 web3.fromWei(web3.eth.getBalance(web3.eth.accounts[3])).toString()
 web3.fromWei(web3.eth.getBalance(web3.eth.accounts[4])).toString()
+
+var key = new NodeRSA(['f43b06b070f9312ea5a0e8046056194e0f6f381f71c11ce1982c1c5e8e434b52', []]);
+e1 = key.encrypt(Buffer("hello"))
+e2 = key.decrypt(e1)
+
+var prefix = '-----BEGIN CERTIFICATE-----\n';
+var postfix = '-----END CERTIFICATE-----';
+var puKey = prefix + Buffer('1626e57bacbf6d41dc7441f0cf796344d21c8fdb').toString('base64').match(/.{0,64}/g).join('\n') + postfix;
+var prKey = prefix + Buffer('f43b06b070f9312ea5a0e8046056194e0f6f381f71c11ce1982c1c5e8e434b52').toString('base64').match(/.{0,64}/g).join('\n') + postfix;
 */
 
 pragma solidity ^0.4.18;
@@ -100,7 +109,7 @@ contractInstance.addMedia(2, 'Khushboo', web3.eth.accounts[3], 'https://www.myga
 
 	//Parameters : buyer address, mediaID
 /*
-contractInstance.buyMedia(web3.eth.accounts[5], 1, {from: web3.eth.accounts[5],value: web3.toWei('0.01','ether') , gas:4700000})
+contractInstance.buyMedia(web3.eth.accounts[5], 1, {from: web3.eth.accounts[5],value: web3.toWei('0.02','ether') , gas:4700000})
 */
 	function buyMedia(address recv_add, uint mID) public payable{
 		uint temp = type_customer[recv_add];
