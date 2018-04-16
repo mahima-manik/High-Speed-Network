@@ -1,29 +1,3 @@
-/* How to run:
-code = fs.readFileSync('Media.sol').toString()
-solc = require('solc')
-compiledCode = solc.compile(code)
-abiDefinition = JSON.parse(compiledCode.contracts[':Media'].interface)
-VotingContract = web3.eth.contract(abiDefinition)
-byteCode = compiledCode.contracts[':Media'].bytecode
-deployedContract = VotingContract.new((web3.eth.accounts), {data: byteCode, from: web3.eth.accounts[0], gas: 4700000})
-contractInstance = VotingContract.at(deployedContract.address)
-contractInstance.validateCreator(web3.eth.accounts[0], {from: web3.eth.accounts[0]})
-web3.fromWei(web3.eth.getBalance(web3.eth.accounts[0])).toString()
-web3.fromWei(web3.eth.getBalance(web3.eth.accounts[1])).toString()
-web3.fromWei(web3.eth.getBalance(web3.eth.accounts[2])).toString()
-web3.fromWei(web3.eth.getBalance(web3.eth.accounts[3])).toString()
-web3.fromWei(web3.eth.getBalance(web3.eth.accounts[4])).toString()
-
-var key = new NodeRSA(['f43b06b070f9312ea5a0e8046056194e0f6f381f71c11ce1982c1c5e8e434b52', []]);
-e1 = key.encrypt(Buffer("hello"))
-e2 = key.decrypt(e1)
-
-var prefix = '-----BEGIN CERTIFICATE-----\n';
-var postfix = '-----END CERTIFICATE-----';
-var puKey = prefix + Buffer('1626e57bacbf6d41dc7441f0cf796344d21c8fdb').toString('base64').match(/.{0,64}/g).join('\n') + postfix;
-var prKey = prefix + Buffer('f43b06b070f9312ea5a0e8046056194e0f6f381f71c11ce1982c1c5e8e434b52').toString('base64').match(/.{0,64}/g).join('\n') + postfix;
-*/
-
 pragma solidity ^0.4.18;
 
 contract Media 		{
@@ -36,7 +10,7 @@ contract Media 		{
 		uint media_ID;
 		bytes32 creator;
 		address creator_add;
-		bytes32 url;
+		string url;
 		uint256 cost_for_individual;
 		uint256 cost_for_company;
 		address[] stake_holder_list;
@@ -44,6 +18,9 @@ contract Media 		{
 	}
 
 	media_c[] media_list;
+	mapping (address=>bytes32) public Pub_Key;
+	mapping (address=>uint[]) buyMatrix;
+	mapping (uint=>string) encrypted_url;
 	mapping (address=>uint) public type_customer;
 	
 	function Media (address[] cr_add) public  	{
@@ -61,6 +38,11 @@ contract Media 		{
 		}
 	}
 
+	function addPublicKeys(address[] cr_add, bytes32[] pub_key) public {
+		for (uint i =0; i<cr_add.length;i++){
+			Pub_Key[cr_add[i]]=pub_key[i];
+		}
+	}
 
 	function validateCreator (address addr) view public returns (bool)	{
 		for ( uint i = 0; i < creator_list.length; i++ )	{
@@ -75,7 +57,7 @@ contract Media 		{
 contractInstance.addMedia(1, 'Mahima', web3.eth.accounts[0], 'https://www.mygaana.com', web3.toWei('0.01'), web3.toWei('0.02'),[web3.eth.accounts[1],web3.eth.accounts[2],web3.eth.accounts[3]],[20,20,20], {from: web3.eth.accounts[0], gas:4700000})
 contractInstance.addMedia(2, 'Khushboo', web3.eth.accounts[3], 'https://www.mygaana.com', web3.toWei('0.01'), web3.toWei('0.02'),[web3.eth.accounts[3],web3.eth.accounts[4],web3.eth.accounts[5]],[30,30,20], {from: web3.eth.accounts[3], gas:4700000})
 */
-	function addMedia(uint ID, bytes32 cr, address cr_add, bytes32 url, uint256 c_i, uint256 c_c, address[] stake_hol_list, uint[] stake_per_list) public {
+	function addMedia(uint ID, bytes32 cr, address cr_add, string url, uint256 c_i, uint256 c_c, address[] stake_hol_list, uint[] stake_per_list) public {
 		require(validateCreator(cr_add));
 		require(stake_hol_list.length <= 5);
 		require(stake_hol_list.length == stake_per_list.length);
@@ -89,13 +71,25 @@ contractInstance.addMedia(2, 'Khushboo', web3.eth.accounts[3], 'https://www.myga
 		return media_list.length;
 	}
 
+
+	function checkMedia (address a, uint id) view public returns (bool)	{
+		for (uint j = 0; j < buyMatrix[a].length; j++)	{
+			if (id == buyMatrix[a][j])	{
+				return true;
+			}
+		}
+		return false;
+	}
 	//contractInstance.printAllMedia({from: web3.eth.accounts[0]}).toString()
-	function printAllMedia () public view returns (uint[], bytes32[]) {
+	function printAllMedia () view public returns (uint[], bytes32[]) {
+		
 		uint[] temp;
 		bytes32[] temp2;
 		for (uint i = 0; i < media_list.length; i++)	{
-			temp.push( media_list[i].media_ID );
-			temp2.push( media_list[i].creator );
+			if (checkMedia (msg.sender, media_list[i].media_ID) == false)	{
+					temp.push( media_list[i].media_ID );
+					temp2.push( media_list[i].creator );
+			}
 		}
 		return (temp, temp2);
 	}
@@ -116,8 +110,7 @@ contractInstance.buyMedia(web3.eth.accounts[5], 1, {from: web3.eth.accounts[5],v
 		address r_addr;
 		uint256 cost;
 		uint index_media ; 
-		for (uint i = 0; i < media_list.length; i++){
-			
+		for (uint i = 0; i < media_list.length; i++){	
 			if (media_list[i].media_ID == mID) {
 				index_media = i;
 				if ( temp == 0 )	{
@@ -136,9 +129,31 @@ contractInstance.buyMedia(web3.eth.accounts[5], 1, {from: web3.eth.accounts[5],v
 			media_list[index_media].stake_holder_list[s_addr].transfer(msg.value*media_list[index_media].stake_list[s_addr]/100);
 			stake_share += media_list[index_media].stake_list[s_addr];
 		}
+		buyMatrix[recv_add].push(mID);
 		r_addr.transfer(msg.value*(100 - stake_share)/100);
 	}
 
-	
+	function returnMedia(uint mid,address creator) view public returns (string){
+		for (uint i=0; i < media_list.length; i++){
+			if (media_list[i].media_ID == mid){
+				if (media_list[i].creator_add == creator){
+					return media_list[i].url;
+				}
+			}
+		}
+	}
 
+	function addEncryptedMedia(uint mid,address creator, string encr_url) public {
+		for(uint i =0; i<media_list.length;i++){
+			if (media_list[i].media_ID == mid){
+				if (media_list[i].creator_add == creator){
+					encrypted_url[mid] = encr_url;
+				}
+			}
+		}
+	}
+
+	function retrieveEncryptedMedia(uint mid) view public returns(string){
+		return encrypted_url[mid];
+	}
 }

@@ -1,0 +1,78 @@
+How to run:
+code = fs.readFileSync('Media.sol').toString()
+solc = require('solc')
+const util = require('ethereumjs-util')
+const ecies = require("eth-ecies")
+compiledCode = solc.compile(code)
+abiDefinition = JSON.parse(compiledCode.contracts[':Media'].interface)
+VotingContract = web3.eth.contract(abiDefinition)
+byteCode = compiledCode.contracts[':Media'].bytecode
+deployedContract = VotingContract.new((web3.eth.accounts), {data: byteCode, from: web3.eth.accounts[0], gas: 4700000})
+contractInstance = VotingContract.at(deployedContract.address)
+
+contractInstance.validateCreator(web3.eth.accounts[0], {from: web3.eth.accounts[0]})
+web3.fromWei(web3.eth.getBalance(web3.eth.accounts[0])).toString()
+web3.fromWei(web3.eth.getBalance(web3.eth.accounts[1])).toString()
+web3.fromWei(web3.eth.getBalance(web3.eth.accounts[2])).toString()
+web3.fromWei(web3.eth.getBalance(web3.eth.accounts[3])).toString()
+web3.fromWei(web3.eth.getBalance(web3.eth.accounts[4])).toString()
+
+
+
+Creating encrypted URL from acc[0]
+
+Step1: Generating Public key of account0 
+url_m1 = 'https://www.mygaana.com';
+any_buff = new Buffer('hello');
+
+sig0 = web3.eth.sign(web3.eth.accounts[0], '0x' + any_buff.toString('hex'));
+res0 = util.fromRpcSig(sig0);
+prefix = new Buffer("\x19Ethereum Signed Message:\n");
+prefixedMsg = util.sha3(Buffer.concat([prefix, new Buffer(String(any_buff.length)), any_buff]));
+pubKey0  = util.ecrecover(prefixedMsg, res0.v, res0.r, res0.s);
+
+Step2: Encrpting the URL with public key generated
+pubKey0_buff = new Buffer(pubKey0, 'hex');
+url_m1_buff = new Buffer(url_m1);
+url_m1_enc = ecies.encrypt(pubKey0_buff, url_m1_buff);
+
+Step3: Adding Media using acc[0] as cretaor
+contractInstance.addMedia(1, 'Mahima', web3.eth.accounts[0], url_m1_enc.toString('base64'), web3.toWei('0.01'), web3.toWei('0.02'),[web3.eth.accounts[1],web3.eth.accounts[2],web3.eth.accounts[3]],[20,20,20], {from: web3.eth.accounts[0], gas:4700000})
+
+Step4: Retreiving stored media:
+med0 = contractInstance.returnMedia(1, web3.eth.accounts[0])
+
+Step5: Decrytping with acc[0] private key:
+privateKey0 = '1ab548f405d6b68af8cfd64eee7cea0cc3a149cd1e76ef5d8b4e9334e525558a';
+PrivateKey0_buff = new Buffer(privateKey0, 'hex');
+med0_buff = new Buffer(med0, 'base64');
+med0_dec = ecies.decrypt(PrivateKey0_buff, med0_buff);
+y = med0_dec.toString('utf8');
+console.log(y);
+
+Step6: Generate public key of buyer acc[3]:
+
+sig3 = web3.eth.sign(web3.eth.accounts[3], '0x' + any_buff.toString('hex'));
+res3 = util.fromRpcSig(sig3);
+prefix = new Buffer("\x19Ethereum Signed Message:\n");
+prefixedMsg = util.sha3(Buffer.concat([prefix, new Buffer(String(any_buff.length)), any_buff]));
+pubKey3  = util.ecrecover(prefixedMsg, res3.v, res3.r, res3.s);
+
+Step7: Encrpting decrypted msg med0_dec with acc[3] public key:
+pubKey3_buff = new Buffer(pubKey3, 'hex');
+url_m1_buff = new Buffer(med0_dec);
+url_m1_enc = ecies.encrypt(pubKey3_buff, med0_dec);
+
+Step8: Storing Encrypted media for buyer acc[3]:
+contractInstance.addEncryptedMedia(1, web3.eth.accounts[0], url_m1_enc.toString('base64'),{from: web3.eth.accounts[0], gas: 4700000}) 
+
+Step9: Retrieving Encrypted Media (Buyer)
+en_m= contractInstance.retrieveEncryptedMedia(1,{from:web3.eth.accounts[3],gas:4700000})
+
+step10: Decrypting url on buyer's side
+privateKey3 = '15d8cbb765f6c5d63d7f5bb43155938fa7e6c71f35c41dba8b70101b9732b1fa';
+PrivateKey3_buff = new Buffer(privateKey3, 'hex');
+med3_buff = new Buffer(en_m, 'base64');
+med3_dec = ecies.decrypt(PrivateKey3_buff, med3_buff);
+y = med3_dec.toString('utf8');
+console.log(y);
